@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/context/AuthContext';
 import { Card } from '@/components/ui/Card';
 import { StatCard } from '@/components/ui/StatCard';
-import { Package, BarChart3, Database } from 'lucide-react';
-import { mockDistricts, mockDemand, mockRiceTypes } from '@/lib/mockData';
+import { Package, BarChart3, Database, Loader2 } from 'lucide-react';
 import { formatNumber } from '@/lib/utils';
 
 const RiceMap = dynamic(
@@ -15,45 +14,78 @@ const RiceMap = dynamic(
 );
 
 export default function AdminMapPage() {
-  const { productions } = useAuth();
+  const { user } = useAuth();
+  const [mapData, setMapData] = useState<any[]>([]);
+  const [riceTypes, setRiceTypes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filterRiceType, setFilterRiceType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
 
-  const getDistrictStats = () => {
-    return mockDistricts.map(district => {
-      const districtProductions = productions.filter(p => p.district === district.name);
-      const districtDemands = mockDemand.filter(d => d.district === district.name);
+  useEffect(() => {
+    fetchMapData();
+    fetchRiceTypes();
+  }, []);
+
+  const fetchMapData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/analytics/map');
+      const result = await response.json();
       
-      const filteredProductions = filterRiceType 
-        ? districtProductions.filter(p => p.rice_type_name === filterRiceType)
-        : districtProductions;
+      if (result.success) {
+        setMapData(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching map data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchRiceTypes = async () => {
+    try {
+      const response = await fetch('/api/rice-types');
+      const result = await response.json();
       
-      const filteredDemands = filterRiceType
-        ? districtDemands.filter(d => d.rice_type_name === filterRiceType)
-        : districtDemands;
-      
-      const totalProduction = filteredProductions.reduce((sum, p) => sum + p.quantity_kg, 0);
-      const totalDemand = filteredDemands.reduce((sum, d) => sum + d.quantity_kg, 0);
-      const balance = totalProduction - totalDemand;
-      const status = balance > 0 ? 'surplus' : balance < 0 ? 'deficit' : 'balanced';
-      
-      return {
-        ...district,
-        production: totalProduction,
-        demand: totalDemand,
-        balance,
-        status
-      };
-    }).filter(d => {
-      if (!filterStatus) return true;
-      return d.status === filterStatus;
+      if (result.success) {
+        setRiceTypes(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching rice types:', error);
+    }
+  };
+
+  const getFilteredDistricts = () => {
+    return mapData.filter(district => {
+      // Filter by status
+      if (filterStatus && district.status !== filterStatus) {
+        return false;
+      }
+
+      // Filter by rice type
+      if (filterRiceType) {
+        const hasRiceType = district.rice_types?.some(
+          (rt: any) => rt.rice_type_id === filterRiceType
+        );
+        if (!hasRiceType) return false;
+      }
+
+      return true;
     });
   };
 
-  const districtStats = getDistrictStats();
-  const totalProduction = districtStats.reduce((sum, d) => sum + d.production, 0);
-  const totalDemand = districtStats.reduce((sum, d) => sum + d.demand, 0);
+  const filteredDistricts = getFilteredDistricts();
+  const totalProduction = filteredDistricts.reduce((sum, d) => sum + d.production, 0);
+  const totalDemand = filteredDistricts.reduce((sum, d) => sum + d.demand, 0);
   const totalBalance = totalProduction - totalDemand;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -88,8 +120,8 @@ export default function AdminMapPage() {
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
           >
             <option value="">All Rice Types</option>
-            {mockRiceTypes.map(type => (
-              <option key={type.id} value={type.name}>{type.name}</option>
+            {riceTypes.map(type => (
+              <option key={type.id} value={type.id}>{type.name}</option>
             ))}
           </select>
           
@@ -120,7 +152,7 @@ export default function AdminMapPage() {
           </div>
         </div>
 
-        <RiceMap districts={districtStats} />
+        <RiceMap districts={filteredDistricts} />
       </Card>
     </div>
   );

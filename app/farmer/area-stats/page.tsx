@@ -1,120 +1,120 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
-import { mockDistricts, mockDemand, mockRiceTypes } from '@/lib/mockData';
+import { Loader2 } from 'lucide-react';
 import { formatNumber } from '@/lib/utils';
 
 export default function AreaStatsPage() {
-  const { productions } = useAuth();
-  const [filterRiceType, setFilterRiceType] = useState('');
+  const [districtStats, setDistrictStats] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const aggregateByDistrict = () => {
-    const stats: { [key: string]: any } = {};
-    
-    mockDistricts.forEach(district => {
-      const districtProductions = productions.filter(p => p.district === district.name);
-      const districtDemands = mockDemand.filter(d => d.district === district.name);
+  useEffect(() => {
+    fetchDistrictStats();
+  }, []);
+
+  const fetchDistrictStats = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/analytics/district-stats');
+      const result = await response.json();
       
-      const filteredProductions = filterRiceType 
-        ? districtProductions.filter(p => p.rice_type_name === filterRiceType)
-        : districtProductions;
-      
-      const filteredDemands = filterRiceType
-        ? districtDemands.filter(d => d.rice_type_name === filterRiceType)
-        : districtDemands;
-      
-      const totalProduction = filteredProductions.reduce((sum, p) => sum + p.quantity_kg, 0);
-      const totalDemand = filteredDemands.reduce((sum, d) => sum + d.quantity_kg, 0);
-      const balance = totalProduction - totalDemand;
-      
-      const riceTypes = [...new Set(filteredProductions.map(p => p.rice_type_name))];
-      
-      if (totalProduction > 0 || totalDemand > 0) {
-        stats[district.name] = {
-          production: totalProduction,
-          demand: totalDemand,
-          balance,
-          status: balance > 0 ? 'surplus' : balance < 0 ? 'deficit' : 'balanced',
-          riceTypes
-        };
+      if (result.success) {
+        // Group by district
+        const grouped = result.data.reduce((acc: any, stat: any) => {
+          if (!acc[stat.district]) {
+            acc[stat.district] = {
+              district: stat.district,
+              production: 0,
+              demand: 0,
+              balance: 0,
+              rice_types: [],
+            };
+          }
+          acc[stat.district].production += stat.production;
+          acc[stat.district].demand += stat.demand;
+          acc[stat.district].balance += stat.balance;
+          acc[stat.district].rice_types.push(stat);
+          return acc;
+        }, {});
+
+        setDistrictStats(Object.values(grouped));
       }
-    });
-    
-    return stats;
-  };
-
-  const stats = aggregateByDistrict();
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'surplus': return 'green';
-      case 'deficit': return 'red';
-      default: return 'yellow';
+    } catch (error) {
+      console.error('Error fetching district stats:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-2xl font-bold text-gray-800">Area Statistics</h2>
-        <div className="w-full sm:w-64">
-          <select
-            value={filterRiceType}
-            onChange={(e) => setFilterRiceType(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-          >
-            <option value="">All Rice Types</option>
-            {mockRiceTypes.map(type => (
-              <option key={type.id} value={type.name}>{type.name}</option>
-            ))}
-          </select>
-        </div>
-      </div>
+      <h2 className="text-2xl font-bold text-gray-800">Area Statistics - Production vs Demand</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {Object.entries(stats).map(([district, data]) => (
-          <Card key={district}>
-            <h3 className="text-lg font-bold text-gray-800 mb-4">{district}</h3>
-            
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Production:</span>
-                <span className="font-semibold text-green-600">
-                  {formatNumber(data.production)} kg
-                </span>
-              </div>
+        {districtStats.map((stat) => (
+          <Card key={stat.district}>
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-800">{stat.district}</h3>
               
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Demand:</span>
-                <span className="font-semibold text-blue-600">
-                  {formatNumber(data.demand)} kg
-                </span>
-              </div>
-              
-              <div className="pt-3 border-t">
+              <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Balance:</span>
-                  <span className={`font-bold text-${getStatusColor(data.status)}-600`}>
-                    {data.balance > 0 ? '+' : ''}{formatNumber(data.balance)} kg
+                  <span className="text-sm text-gray-600">Total Production:</span>
+                  <span className="font-semibold text-green-600">
+                    {formatNumber(stat.production)} kg
                   </span>
                 </div>
-                <div className="mt-2">
-                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold bg-${getStatusColor(data.status)}-100 text-${getStatusColor(data.status)}-700`}>
-                    {data.status.toUpperCase()}
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Total Demand:</span>
+                  <span className="font-semibold text-blue-600">
+                    {formatNumber(stat.demand)} kg
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                  <span className="text-sm font-medium text-gray-700">Balance:</span>
+                  <span className={`font-bold ${
+                    stat.balance > 0 ? 'text-green-600' : 
+                    stat.balance < 0 ? 'text-red-600' : 
+                    'text-gray-600'
+                  }`}>
+                    {stat.balance > 0 ? '+' : ''}{formatNumber(stat.balance)} kg
                   </span>
                 </div>
               </div>
-              
-              {data.riceTypes.length > 0 && (
-                <div className="pt-3 border-t">
-                  <p className="text-sm text-gray-600 mb-2">Rice Types:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {data.riceTypes.map((type: string) => (
-                      <span key={type} className="px-2 py-1 bg-gray-100 rounded text-xs">
-                        {type}
-                      </span>
+
+              <div className="pt-2">
+                <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                  stat.balance > 0 ? 'bg-green-100 text-green-800' :
+                  stat.balance < 0 ? 'bg-red-100 text-red-800' :
+                  'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {stat.balance > 0 ? 'Surplus' : stat.balance < 0 ? 'Deficit' : 'Balanced'}
+                </span>
+              </div>
+
+              {stat.rice_types.length > 0 && (
+                <div className="pt-4 border-t border-gray-200">
+                  <p className="text-xs font-medium text-gray-500 mb-2">By Rice Type:</p>
+                  <div className="space-y-1">
+                    {stat.rice_types.map((rt: any, idx: number) => (
+                      <div key={idx} className="flex justify-between text-xs">
+                        <span className="text-gray-600">{rt.rice_type_name}</span>
+                        <span className={
+                          rt.balance > 0 ? 'text-green-600' : 
+                          rt.balance < 0 ? 'text-red-600' : 
+                          'text-gray-600'
+                        }>
+                          {rt.balance > 0 ? '+' : ''}{formatNumber(rt.balance)} kg
+                        </span>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -123,6 +123,14 @@ export default function AreaStatsPage() {
           </Card>
         ))}
       </div>
+
+      {districtStats.length === 0 && (
+        <Card>
+          <div className="text-center py-12 text-gray-500">
+            No district statistics available
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

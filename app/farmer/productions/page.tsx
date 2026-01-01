@@ -1,105 +1,115 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Plus, Search, Edit2, Trash2, Loader2 } from 'lucide-react';
 import { ProductionForm } from '@/components/farmer/ProductionForm';
-import { Plus, Edit2, Trash2, Search } from 'lucide-react';
-import { formatNumber, formatDate } from '@/lib/utils';
-import { mockRiceTypes, seasons } from '@/lib/mockData';
-import { Production } from '@/lib/types';
+import { formatNumber } from '@/lib/utils';
 
 export default function ProductionsPage() {
-  const { user, productions, setProductions } = useAuth();
+  const { productions, deleteProduction, refreshProductions } = useAuth();
   const [showForm, setShowForm] = useState(false);
-  const [editingProduction, setEditingProduction] = useState<Production | undefined>();
+  const [editingProduction, setEditingProduction] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSeason, setFilterSeason] = useState('');
+  const [filterRiceType, setFilterRiceType] = useState('');
+  const [seasons, setSeasons] = useState<any[]>([]);
+  const [riceTypes, setRiceTypes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  if (!user) return null;
+  useEffect(() => {
+    fetchSeasons();
+    fetchRiceTypes();
+    setLoading(false);
+  }, []);
 
-  const userProductions = productions.filter(p => p.farmer_id === user.id);
-  const filteredProductions = userProductions.filter(p => {
-    const matchesSearch = p.rice_type_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         p.district.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSeason = !filterSeason || p.season === filterSeason;
-    return matchesSearch && matchesSeason;
-  });
-
-  const handleSubmit = (formData: any) => {
-    const riceType = mockRiceTypes.find(r => r.id === parseInt(formData.rice_type_id));
-    if (!riceType) return;
-
-    if (editingProduction) {
-      setProductions(productions.map(p => 
-        p.id === editingProduction.id ? {
-          ...p,
-          ...formData,
-          rice_type_id: parseInt(formData.rice_type_id),
-          rice_type_name: riceType.name,
-          quantity_kg: parseFloat(formData.quantity_kg)
-        } : p
-      ));
-    } else {
-      const newProduction: Production = {
-        id: Math.max(...productions.map(p => p.id), 0) + 1,
-        farmer_id: user.id,
-        farmer_name: user.name,
-        rice_type_id: parseInt(formData.rice_type_id),
-        rice_type_name: riceType.name,
-        quantity_kg: parseFloat(formData.quantity_kg),
-        created_at: new Date().toISOString().split('T')[0],
-        season: formData.season,
-        district: formData.district,
-        production_date: formData.production_date,
-        notes: formData.notes
-      };
-      setProductions([...productions, newProduction]);
+  const fetchSeasons = async () => {
+    try {
+      const response = await fetch('/api/seasons');
+      const result = await response.json();
+      if (result.success) setSeasons(result.data);
+    } catch (error) {
+      console.error('Error fetching seasons:', error);
     }
-    
-    setShowForm(false);
-    setEditingProduction(undefined);
   };
 
-  const handleEdit = (prod: Production) => {
-    setEditingProduction(prod);
+  const fetchRiceTypes = async () => {
+    try {
+      const response = await fetch('/api/rice-types');
+      const result = await response.json();
+      if (result.success) setRiceTypes(result.data);
+    } catch (error) {
+      console.error('Error fetching rice types:', error);
+    }
+  };
+
+  const handleEdit = (production: any) => {
+    setEditingProduction(production);
     setShowForm(true);
   };
 
-  const handleDelete = (id: number) => {
-    if (confirm('Are you sure you want to delete this production record?')) {
-      setProductions(productions.filter(p => p.id !== id));
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this production record?')) {
+      try {
+        await deleteProduction(id);
+        await refreshProductions();
+      } catch (error: any) {
+        alert(error.message);
+      }
     }
   };
 
-  const handleCancel = () => {
+  const handleFormClose = async () => {
     setShowForm(false);
-    setEditingProduction(undefined);
+    setEditingProduction(null);
+    await refreshProductions();
   };
+
+  const filteredProductions = productions.filter(prod => {
+    const matchesSearch = searchTerm === '' || 
+      prod.rice_type_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      prod.district?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesSeason = filterSeason === '' || prod.season_id === filterSeason;
+    const matchesRiceType = filterRiceType === '' || prod.rice_type_id === filterRiceType;
+    
+    return matchesSearch && matchesSeason && matchesRiceType;
+  });
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-800">Production Management</h2>
         <Button onClick={() => setShowForm(true)}>
-          <Plus className="w-4 h-4 mr-2 inline" />
+          <Plus className="w-4 h-4 mr-2" />
           Add Production
         </Button>
       </div>
 
       <Card>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="relative">
-            <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
               type="text"
-              placeholder="Search by rice type or district..."
+              placeholder="Search rice type or district..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+              className="pl-10"
             />
           </div>
+
           <select
             value={filterSeason}
             onChange={(e) => setFilterSeason(e.target.value)}
@@ -107,59 +117,95 @@ export default function ProductionsPage() {
           >
             <option value="">All Seasons</option>
             {seasons.map(season => (
-              <option key={season} value={season}>{season}</option>
+              <option key={season.id} value={season.id}>{season.name}</option>
+            ))}
+          </select>
+
+          <select
+            value={filterRiceType}
+            onChange={(e) => setFilterRiceType(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+          >
+            <option value="">All Rice Types</option>
+            {riceTypes.map(type => (
+              <option key={type.id} value={type.id}>{type.name}</option>
             ))}
           </select>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700">Date</th>
-                <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700">Rice Type</th>
-                <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700">Season</th>
-                <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700">District</th>
-                <th className="px-4 py-2 text-right text-sm font-semibold text-gray-700">Quantity (kg)</th>
-                <th className="px-4 py-2 text-center text-sm font-semibold text-gray-700">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Rice Type
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Season
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  District
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Quantity (kg)
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Date
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
-            <tbody>
-              {filteredProductions.map(prod => (
-                <tr key={prod.id} className="border-t hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm">{formatDate(prod.production_date)}</td>
-                  <td className="px-4 py-3 text-sm">{prod.rice_type_name}</td>
-                  <td className="px-4 py-3 text-sm">{prod.season}</td>
-                  <td className="px-4 py-3 text-sm">{prod.district}</td>
-                  <td className="px-4 py-3 text-sm text-right font-medium">
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredProductions.map((prod) => (
+                <tr key={prod.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {prod.rice_type_name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {prod.season_name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {prod.district}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
                     {formatNumber(prod.quantity_kg)}
                   </td>
-                  <td className="px-4 py-3 text-sm text-center">
-                    <button 
-                      onClick={() => handleEdit(prod)} 
-                      className="text-blue-600 hover:text-blue-800 mr-3"
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(prod.production_date).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button
+                      onClick={() => handleEdit(prod)}
+                      className="text-blue-600 hover:text-blue-900 mr-4"
                     >
-                      <Edit2 className="w-4 h-4 inline" />
+                      <Edit2 className="w-4 h-4" />
                     </button>
-                    <button 
-                      onClick={() => handleDelete(prod.id)} 
-                      className="text-red-600 hover:text-red-800"
+                    <button
+                      onClick={() => handleDelete(prod.id)}
+                      className="text-red-600 hover:text-red-900"
                     >
-                      <Trash2 className="w-4 h-4 inline" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+
+          {filteredProductions.length === 0 && (
+            <div className="text-center py-12 text-gray-500">
+              No production records found
+            </div>
+          )}
         </div>
       </Card>
 
       {showForm && (
         <ProductionForm
           production={editingProduction}
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
+          onClose={handleFormClose}
         />
       )}
     </div>
