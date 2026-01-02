@@ -6,7 +6,7 @@ import { AuthProvider } from '@/context/AuthContext';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Rice Management System - Sri Lanka',
+  title: 'Lanka Rice Hub System - Sri Lanka',
   description: 'Rice Availability Management System for Sri Lanka',
 };
 

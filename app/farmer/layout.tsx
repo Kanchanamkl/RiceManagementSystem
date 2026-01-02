@@ -58,7 +58,7 @@ export default function FarmerLayout({
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b z-40">
         <div className="flex items-center justify-between px-4 py-3">
-          <h1 className="text-lg font-bold text-green-700">Rice Management</h1>
+          <h1 className="text-lg font-bold text-green-700">Lanka Rice Hub</h1>
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="p-2 rounded-lg hover:bg-gray-100"
@@ -89,7 +89,7 @@ export default function FarmerLayout({
         <div className="flex flex-col h-full">
           {/* Desktop Header */}
           <div className="hidden lg:flex items-center justify-center h-16 border-b">
-            <h1 className="text-xl font-bold text-green-700">Rice Management</h1>
+            <h1 className="text-xl font-bold text-green-700">Lanka Rice Hub</h1>
           </div>
 
           {/* Mobile User Info */}

@@ -39,7 +39,7 @@ export function Navbar() {
             <Link href={user?.role === 'admin' ? '/admin/map' : '/farmer/dashboard'}>
               <div className="flex items-center cursor-pointer">
                 <Package className="w-8 h-8 mr-2" />
-                <span className="text-xl font-bold">Rice Management</span>
+                <span className="text-xl font-bold">Lanka Rice Hub</span>
               </div>
             </Link>
           </div>
