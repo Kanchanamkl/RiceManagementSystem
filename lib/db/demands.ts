@@ -1,5 +1,4 @@
-
-import { supabaseAdmin } from '@/lib/supabase/client';
+import { query } from './connection';
 
 export interface DemandRecord {
   id: string;
@@ -11,67 +10,39 @@ export interface DemandRecord {
   created_by?: string;
   created_at: string;
   updated_at: string;
-  // Joined fields
   rice_type_name?: string;
   creator_name?: string;
 }
 
 export async function getAllDemands() {
-  const { data, error } = await supabaseAdmin
-    .from('demands')
-    .select(`
-      *,
-      rice_types:rice_type_id(id, name, category),
-      users:created_by(id, name)
-    `)
-    .order('demand_date', { ascending: false });
+  const result = await query<DemandRecord>(
+    `SELECT 
+      d.*,
+      rt.name as rice_type_name,
+      u.name as creator_name
+    FROM demands d
+    LEFT JOIN rice_types rt ON d.rice_type_id = rt.id
+    LEFT JOIN users u ON d.created_by = u.id
+    ORDER BY d.demand_date DESC`
+  );
 
-  if (error) throw error;
-
-  return (data || []).map(demand => ({
-    id: demand.id,
-    rice_type_id: demand.rice_type_id,
-    district: demand.district,
-    quantity_kg: demand.quantity_kg,
-    demand_date: demand.demand_date,
-    notes: demand.notes,
-    created_by: demand.created_by,
-    created_at: demand.created_at,
-    updated_at: demand.updated_at,
-    rice_type_name: demand.rice_types?.name,
-    creator_name: demand.users?.name,
-  }));
+  return result.rows;
 }
 
 export async function getDemandById(id: string) {
-  const { data, error } = await supabaseAdmin
-    .from('demands')
-    .select(`
-      *,
-      rice_types:rice_type_id(id, name, category),
-      users:created_by(id, name)
-    `)
-    .eq('id', id)
-    .single();
+  const result = await query<DemandRecord>(
+    `SELECT 
+      d.*,
+      rt.name as rice_type_name,
+      u.name as creator_name
+    FROM demands d
+    LEFT JOIN rice_types rt ON d.rice_type_id = rt.id
+    LEFT JOIN users u ON d.created_by = u.id
+    WHERE d.id = $1`,
+    [id]
+  );
 
-  if (error) {
-    if (error.code === 'PGRST116') return null;
-    throw error;
-  }
-
-  return {
-    id: data.id,
-    rice_type_id: data.rice_type_id,
-    district: data.district,
-    quantity_kg: data.quantity_kg,
-    demand_date: data.demand_date,
-    notes: data.notes,
-    created_by: data.created_by,
-    created_at: data.created_at,
-    updated_at: data.updated_at,
-    rice_type_name: data.rice_types?.name,
-    creator_name: data.users?.name,
-  };
+  return result.rows[0] || null;
 }
 
 export async function createDemand(data: {
@@ -82,33 +53,44 @@ export async function createDemand(data: {
   notes?: string;
   created_by: string;
 }) {
-  const { data: demand, error } = await supabaseAdmin
-    .from('demands')
-    .insert(data)
-    .select()
-    .single();
+  const result = await query<DemandRecord>(
+    `INSERT INTO demands (rice_type_id, district, quantity_kg, demand_date, notes, created_by)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING *`,
+    [data.rice_type_id, data.district, data.quantity_kg, data.demand_date, data.notes, data.created_by]
+  );
 
-  if (error) throw error;
-  return demand;
+  return result.rows[0];
 }
 
 export async function updateDemand(id: string, updates: Partial<DemandRecord>) {
-  const { data, error } = await supabaseAdmin
-    .from('demands')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
+  const fields: string[] = [];
+  const values: any[] = [];
+  let paramCount = 1;
 
-  if (error) throw error;
-  return data;
+  Object.entries(updates).forEach(([key, value]) => {
+    if (value !== undefined && key !== 'id' && key !== 'created_at') {
+      fields.push(`${key} = $${paramCount}`);
+      values.push(value);
+      paramCount++;
+    }
+  });
+
+  if (fields.length === 0) {
+    throw new Error('No fields to update');
+  }
+
+  fields.push(`updated_at = NOW()`);
+  values.push(id);
+
+  const result = await query<DemandRecord>(
+    `UPDATE demands SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`,
+    values
+  );
+
+  return result.rows[0];
 }
 
 export async function deleteDemand(id: string) {
-  const { error } = await supabaseAdmin
-    .from('demands')
-    .delete()
-    .eq('id', id);
-
-  if (error) throw error;
+  await query('DELETE FROM demands WHERE id = $1', [id]);
 }

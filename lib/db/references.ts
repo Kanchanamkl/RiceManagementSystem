@@ -1,31 +1,25 @@
-import { supabaseAdmin } from '@/lib/supabase/client';
+import { query } from './connection';
 
 export async function getRiceTypes() {
-  const { data, error } = await supabaseAdmin
-    .from('rice_types')
-    .select('*')
-    .order('name');
+  const result = await query(
+    'SELECT * FROM rice_types ORDER BY name'
+  );
 
-  if (error) throw error;
-  return data || [];
+  return result.rows;
 }
 
 export async function getDistricts() {
-  const { data, error } = await supabaseAdmin
-    .from('districts')
-    .select('*')
-    .order('name');
+  const result = await query(
+    'SELECT * FROM districts ORDER BY name'
+  );
 
-  if (error) throw error;
-  return data || [];
+  return result.rows;
 }
 
 export async function getSeasons() {
-  const { data, error } = await supabaseAdmin
-    .from('seasons')
-    .select('*')
-    .order('start_date', { ascending: false });
+  const result = await query(
+    'SELECT * FROM seasons ORDER BY start_date DESC'
+  );
 
-  if (error) throw error;
-  return data || [];
+  return result.rows;
 }

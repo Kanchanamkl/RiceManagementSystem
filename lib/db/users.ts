@@ -1,5 +1,4 @@
-
-import { supabaseAdmin } from '@/lib/supabase/client';
+import { query } from './connection';
 
 export interface UserProfile {
   id: string;
@@ -8,73 +7,83 @@ export interface UserProfile {
   role: 'admin' | 'farmer';
   district?: string;
   phone?: string;
+  password_hash: string;
   created_at: string;
   updated_at: string;
 }
 
-export async function createUserProfile(userId: string, data: {
+export async function createUserProfile(data: {
   email: string;
   name: string;
   role: 'admin' | 'farmer';
   district?: string;
   phone?: string;
+  password_hash: string;
 }) {
-  const { data: profile, error } = await supabaseAdmin
-    .from('users')
-    .insert({
-      id: userId,
-      email: data.email,
-      name: data.name,
-      role: data.role,
-      district: data.district,
-      phone: data.phone,
-    })
-    .select()
-    .single();
+  const result = await query<UserProfile>(
+    `INSERT INTO users (email, name, role, district, phone, password_hash)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING *`,
+    [data.email, data.name, data.role, data.district, data.phone, data.password_hash]
+  );
 
-  if (error) throw error;
-  return profile;
+  return result.rows[0];
 }
 
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
-  const { data, error } = await supabaseAdmin
-    .from('users')
-    .select('*')
-    .eq('id', userId)
-    .single();
+  const result = await query<UserProfile>(
+    'SELECT * FROM users WHERE id = $1',
+    [userId]
+  );
 
-  if (error) {
-    if (error.code === 'PGRST116') return null; // Not found
-    throw error;
-  }
-  
-  return data;
+  return result.rows[0] || null;
+}
+
+export async function getUserByEmail(email: string): Promise<UserProfile | null> {
+  const result = await query<UserProfile>(
+    'SELECT * FROM users WHERE email = $1',
+    [email]
+  );
+
+  return result.rows[0] || null;
 }
 
 export async function updateUserProfile(userId: string, updates: Partial<UserProfile>) {
-  const { data, error } = await supabaseAdmin
-    .from('users')
-    .update(updates)
-    .eq('id', userId)
-    .select()
-    .single();
+  const fields: string[] = [];
+  const values: any[] = [];
+  let paramCount = 1;
 
-  if (error) throw error;
-  return data;
+  Object.entries(updates).forEach(([key, value]) => {
+    if (value !== undefined && key !== 'id' && key !== 'created_at') {
+      fields.push(`${key} = $${paramCount}`);
+      values.push(value);
+      paramCount++;
+    }
+  });
+
+  if (fields.length === 0) {
+    throw new Error('No fields to update');
+  }
+
+  fields.push(`updated_at = NOW()`);
+  values.push(userId);
+
+  const result = await query<UserProfile>(
+    `UPDATE users SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`,
+    values
+  );
+
+  return result.rows[0];
 }
 
 export async function getAllUsers(): Promise<UserProfile[]> {
-  const { data, error } = await supabaseAdmin
-    .from('users')
-    .select('*')
-    .order('created_at', { ascending: false });
+  const result = await query<UserProfile>(
+    'SELECT * FROM users ORDER BY created_at DESC'
+  );
 
-  if (error) throw error;
-  return data || [];
+  return result.rows;
 }
 
 export async function deleteUser(userId: string) {
-  // Delete from auth.users (will cascade to public.users)
-  const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
-  if (error) throw error;
+  await query('DELETE FROM users WHERE id = $1', [userId]);
 }

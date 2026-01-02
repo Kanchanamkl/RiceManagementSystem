@@ -1,5 +1,4 @@
-
-import { supabaseAdmin } from '@/lib/supabase/client';
+import { query } from './connection';
 
 export interface ProductionRecord {
   id: string;
@@ -12,82 +11,53 @@ export interface ProductionRecord {
   notes?: string;
   created_at: string;
   updated_at: string;
-  // Joined fields
   rice_type_name?: string;
   season_name?: string;
   farmer_name?: string;
 }
 
 export async function getAllProductions(userId?: string, role?: string) {
-  let query = supabaseAdmin
-    .from('productions')
-    .select(`
-      *,
-      rice_types:rice_type_id(id, name, category),
-      seasons:season_id(id, name),
-      users:farmer_id(id, name, email)
-    `)
-    .order('production_date', { ascending: false });
+  let sql = `
+    SELECT 
+      p.*,
+      rt.name as rice_type_name,
+      s.name as season_name,
+      u.name as farmer_name
+    FROM productions p
+    LEFT JOIN rice_types rt ON p.rice_type_id = rt.id
+    LEFT JOIN seasons s ON p.season_id = s.id
+    LEFT JOIN users u ON p.farmer_id = u.id
+  `;
+  
+  const params: any[] = [];
 
-  // If farmer, only show their productions
   if (role === 'farmer' && userId) {
-    query = query.eq('farmer_id', userId);
+    sql += ' WHERE p.farmer_id = $1';
+    params.push(userId);
   }
 
-  const { data, error } = await query;
+  sql += ' ORDER BY p.production_date DESC';
 
-  if (error) throw error;
-
-  // Transform joined data
-  return (data || []).map(prod => ({
-    id: prod.id,
-    farmer_id: prod.farmer_id,
-    rice_type_id: prod.rice_type_id,
-    season_id: prod.season_id,
-    district: prod.district,
-    quantity_kg: prod.quantity_kg,
-    production_date: prod.production_date,
-    notes: prod.notes,
-    created_at: prod.created_at,
-    updated_at: prod.updated_at,
-    rice_type_name: prod.rice_types?.name,
-    season_name: prod.seasons?.name,
-    farmer_name: prod.users?.name,
-  }));
+  const result = await query<ProductionRecord>(sql, params);
+  return result.rows;
 }
 
 export async function getProductionById(id: string) {
-  const { data, error } = await supabaseAdmin
-    .from('productions')
-    .select(`
-      *,
-      rice_types:rice_type_id(id, name, category),
-      seasons:season_id(id, name),
-      users:farmer_id(id, name, email)
-    `)
-    .eq('id', id)
-    .single();
+  const result = await query<ProductionRecord>(
+    `SELECT 
+      p.*,
+      rt.name as rice_type_name,
+      s.name as season_name,
+      u.name as farmer_name
+    FROM productions p
+    LEFT JOIN rice_types rt ON p.rice_type_id = rt.id
+    LEFT JOIN seasons s ON p.season_id = s.id
+    LEFT JOIN users u ON p.farmer_id = u.id
+    WHERE p.id = $1`,
+    [id]
+  );
 
-  if (error) {
-    if (error.code === 'PGRST116') return null;
-    throw error;
-  }
-
-  return {
-    id: data.id,
-    farmer_id: data.farmer_id,
-    rice_type_id: data.rice_type_id,
-    season_id: data.season_id,
-    district: data.district,
-    quantity_kg: data.quantity_kg,
-    production_date: data.production_date,
-    notes: data.notes,
-    created_at: data.created_at,
-    updated_at: data.updated_at,
-    rice_type_name: data.rice_types?.name,
-    season_name: data.seasons?.name,
-    farmer_name: data.users?.name,
-  };
+  return result.rows[0] || null;
 }
 
 export async function createProduction(data: {
@@ -99,61 +69,79 @@ export async function createProduction(data: {
   production_date: string;
   notes?: string;
 }) {
-  const { data: production, error } = await supabaseAdmin
-    .from('productions')
-    .insert(data)
-    .select()
-    .single();
+  const result = await query<ProductionRecord>(
+    `INSERT INTO productions (farmer_id, rice_type_id, season_id, district, quantity_kg, production_date, notes)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING *`,
+    [data.farmer_id, data.rice_type_id, data.season_id, data.district, data.quantity_kg, data.production_date, data.notes]
+  );
 
-  if (error) throw error;
-  return production;
+  return result.rows[0];
 }
 
 export async function updateProduction(id: string, updates: Partial<ProductionRecord>) {
-  const { data, error } = await supabaseAdmin
-    .from('productions')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
+  const fields: string[] = [];
+  const values: any[] = [];
+  let paramCount = 1;
 
-  if (error) throw error;
-  return data;
+  Object.entries(updates).forEach(([key, value]) => {
+    if (value !== undefined && key !== 'id' && key !== 'created_at') {
+      fields.push(`${key} = $${paramCount}`);
+      values.push(value);
+      paramCount++;
+    }
+  });
+
+  if (fields.length === 0) {
+    throw new Error('No fields to update');
+  }
+
+  fields.push(`updated_at = NOW()`);
+  values.push(id);
+
+  const result = await query<ProductionRecord>(
+    `UPDATE productions SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`,
+    values
+  );
+
+  return result.rows[0];
 }
 
 export async function deleteProduction(id: string) {
-  const { error } = await supabaseAdmin
-    .from('productions')
-    .delete()
-    .eq('id', id);
-
-  if (error) throw error;
+  await query('DELETE FROM productions WHERE id = $1', [id]);
 }
 
 export async function getProductionStats(userId?: string, role?: string) {
-  let query = supabaseAdmin
-    .from('productions')
-    .select('quantity_kg, season_id, seasons:season_id(name)');
+  let sql = `
+    SELECT 
+      SUM(p.quantity_kg) as total,
+      COUNT(*) as count,
+      s.name as season_name,
+      SUM(p.quantity_kg) as season_total
+    FROM productions p
+    LEFT JOIN seasons s ON p.season_id = s.id
+  `;
+  
+  const params: any[] = [];
 
   if (role === 'farmer' && userId) {
-    query = query.eq('farmer_id', userId);
+    sql += ' WHERE p.farmer_id = $1';
+    params.push(userId);
   }
 
-  const { data, error } = await query;
+  sql += ' GROUP BY s.name';
 
-  if (error) throw error;
+  const result = await query(sql, params);
 
-  const total = (data || []).reduce((sum, p) => sum + Number(p.quantity_kg), 0);
+  const total = result.rows.reduce((sum, row) => sum + Number(row.season_total || 0), 0);
+  const count = result.rows.reduce((sum, row) => sum + Number(row.count || 0), 0);
   
   const bySeason: Record<string, number> = {};
-  (data || []).forEach(p => {
-    const seasonName = p.seasons?.name || 'Unknown';
-    bySeason[seasonName] = (bySeason[seasonName] || 0) + Number(p.quantity_kg);
+  result.rows.forEach(row => {
+    if (row.season_name) {
+      bySeason[row.season_name] = Number(row.season_total);
+    }
   });
 
-  return {
-    total,
-    count: data?.length || 0,
-    bySeason,
-  };
+  return { total, count, bySeason };
 }

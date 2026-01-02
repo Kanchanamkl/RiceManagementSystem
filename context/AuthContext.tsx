@@ -2,14 +2,12 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
-import type { Session } from '@supabase/supabase-js';
-import type { User, Production } from '@/lib/types';
+import type { Production } from '@/lib/types';
 
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
   loading: boolean;
+  isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
@@ -30,62 +28,53 @@ interface RegisterData {
   phone?: string;
 }
 
+interface User {
+  id: number;
+  email: string;
+  name: string;
+  role: 'admin' | 'farmer';
+  district?: string;
+  phone?: string;
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [productions, setProductions] = useState<Production[]>([]);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
   const router = useRouter();
 
-  // Check session on mount and listen to auth changes
+  // Check session on mount
   useEffect(() => {
-    const initAuth = async () => {
-      try {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        
-        if (currentSession) {
-          setSession(currentSession);
-          await fetchUserProfile(currentSession.user.id);
-        }
-      } catch (error) {
-        console.error('Auth initialization error:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initAuth();
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
-      setSession(currentSession);
-      
-      if (currentSession) {
-        await fetchUserProfile(currentSession.user.id);
-      } else {
-        setUser(null);
-        setProductions([]);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    checkAuth();
   }, []);
 
-  const fetchUserProfile = async (userId: string) => {
+  const checkAuth = async () => {
     try {
-      const response = await fetch('/api/auth/me');
-      const result = await response.json();
-      
-      if (result.success && result.data.user) {
-        setUser(result.data.user);
-        await fetchProductions(result.data.user);
+      const response = await fetch('/api/auth/me', {
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data.user) {
+          setUser(result.data.user);
+          setIsAuthenticated(true);
+          await fetchProductions(result.data.user);
+        }
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
       }
     } catch (error) {
-      console.error('Fetch user profile error:', error);
+      console.error('Auth check failed:', error);
+      setUser(null);
+      setIsAuthenticated(false);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -114,6 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
+        credentials: 'include',
       });
 
       const result = await response.json();
@@ -123,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       setUser(result.data.user);
-      setSession(result.data.session);
+      setIsAuthenticated(true);
       await fetchProductions(result.data.user);
 
       // Redirect based on role
@@ -139,11 +129,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      await supabase.auth.signOut();
+      await fetch('/api/auth/logout', { 
+        method: 'POST',
+        credentials: 'include',
+      });
       
       setUser(null);
-      setSession(null);
+      setIsAuthenticated(false);
       setProductions([]);
       router.push('/login');
     } catch (error) {
@@ -151,29 +143,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (data: RegisterData) => {
-    try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
+  const register = async (data: RegisterData): Promise<void> => {
+    const response = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
 
-      const result = await response.json();
+    const result = await response.json();
 
-      if (!result.success) {
-        if (result.error.details) {
-          const errorMessages = Object.values(result.error.details).flat().join(', ');
-          throw new Error(errorMessages);
-        }
-        throw new Error(result.error.message);
-      }
-
-      // Auto login after registration
-      await login(data.email, data.password);
-    } catch (error: any) {
-      throw new Error(error.message || 'Registration failed');
+    if (!response.ok) {
+      throw new Error(result.error || 'Registration failed');
     }
+
+    // Don't redirect here, let the component handle it
   };
 
   const updateProfile = async (data: Partial<User>) => {
@@ -257,7 +242,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user,
-      session,
       loading,
       login,
       logout,
@@ -268,6 +252,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       updateProduction,
       deleteProduction,
       refreshProductions,
+      isAuthenticated,
     }}>
       {children}
     </AuthContext.Provider>

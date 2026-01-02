@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -11,26 +12,52 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login, isAuthenticated, user } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const { login, isAuthenticated, user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (isAuthenticated && user) {
+    // Redirect if already authenticated
+    if (!authLoading && isAuthenticated && user) {
       if (user.role === 'admin') {
         router.push('/admin/map');
       } else {
         router.push('/farmer/dashboard');
       }
     }
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user, authLoading, router]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = login(email, password);
-    if (!success) {
-      setError('Invalid email or password');
+    setError('');
+    setLoading(true);
+
+    try {
+      await login(email, password);
+      // Redirect handled by login function in AuthContext
+    } catch (err: any) {
+      setError(err.message || 'Invalid email or password');
+    } finally {
+      setLoading(false);
     }
   };
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render login form if already authenticated
+  if (isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center p-4">
@@ -40,13 +67,13 @@ export default function LoginPage() {
           <p className="text-gray-600 mt-2">Sri Lanka Rice Availability System</p>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             label="Email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="admin@rice.lk"
+            placeholder="your.email@example.com"
             required
           />
           <Input
@@ -54,18 +81,22 @@ export default function LoginPage() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="password123"
+            placeholder="Enter your password"
             required
             error={error}
           />
-          <Button type="submit" className="w-full">Login</Button>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? 'Logging in...' : 'Login'}
+          </Button>
         </form>
 
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg text-sm">
-          <p className="font-semibold mb-2">Demo Credentials:</p>
-          <p>Admin: admin@rice.lk / password123</p>
-          <p>Farmer 1: farmer1@rice.lk / password123</p>
-          <p>Farmer 2: farmer2@rice.lk / password123</p>
+        <div className="mt-6 text-center">
+          <p className="text-gray-600">
+            New farmer?{' '}
+            <Link href="/register" className="text-green-600 hover:text-green-700 font-medium">
+              Register here
+            </Link>
+          </p>
         </div>
       </Card>
     </div>

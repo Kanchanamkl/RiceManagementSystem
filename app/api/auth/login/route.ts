@@ -1,47 +1,61 @@
-
-import { NextRequest } from 'next/server';
-import { supabase } from '@/lib/supabase/client';
-import { getUserProfile } from '@/lib/db/users';
-import { successResponse, errorResponse } from '@/lib/api/response';
+import { NextRequest, NextResponse } from 'next/server';
+import { getUserByEmail } from '@/lib/db/users';
+import { verifyPassword } from '@/lib/auth/password';
+import { createSession } from '@/lib/auth/session';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { email, password } = body;
+    const { email, password } = await request.json();
 
-    // Validate input
     if (!email || !password) {
-      return errorResponse('Email and password are required', 400);
+      return NextResponse.json(
+        { success: false, error: { message: 'Email and password are required' } },
+        { status: 400 }
+      );
     }
 
-    // Sign in with Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const user = await getUserByEmail(email);
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: { message: 'Invalid credentials' } },
+        { status: 401 }
+      );
+    }
+
+    const isValid = await verifyPassword(password, user.password_hash);
+
+    if (!isValid) {
+      return NextResponse.json(
+        { success: false, error: { message: 'Invalid credentials' } },
+        { status: 401 }
+      );
+    }
+
+    await createSession({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
     });
 
-    if (authError) {
-      return errorResponse('Invalid email or password', 401);
-    }
-
-    if (!authData.user) {
-      return errorResponse('Authentication failed', 401);
-    }
-
-    // Get user profile
-    const userProfile = await getUserProfile(authData.user.id);
-
-    if (!userProfile) {
-      return errorResponse('User profile not found', 404);
-    }
-
-    return successResponse({
-      user: userProfile,
-      session: authData.session,
+    return NextResponse.json({
+      success: true,
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          district: user.district,
+          phone: user.phone,
+        },
+      },
     });
-
   } catch (error) {
     console.error('Login error:', error);
-    return errorResponse('Internal server error', 500);
+    return NextResponse.json(
+      { success: false, error: { message: 'Internal server error' } },
+      { status: 500 }
+    );
   }
 }

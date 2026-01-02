@@ -1,50 +1,42 @@
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { jwtVerify } from 'jose';
+
+const JWT_SECRET = new TextEncoder().encode(
+  process.env.JWT_SECRET || 'your-secret-key-change-in-production'
+);
 
 export async function middleware(request: NextRequest) {
-  const res = NextResponse.next();
-  const supabase = createMiddlewareClient({ req: request, res });
+  const session = request.cookies.get('session')?.value;
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  // Protected routes
-  const protectedPaths = ['/admin', '/farmer'];
-  const isProtectedPath = protectedPaths.some(path => 
-    request.nextUrl.pathname.startsWith(path)
+  // Public routes that don't require authentication
+  const publicRoutes = ['/login', '/register', '/'];
+  const isPublicRoute = publicRoutes.some(route => 
+    request.nextUrl.pathname.startsWith(route)
   );
 
-  // Redirect to login if accessing protected route without session
-  if (isProtectedPath && !session) {
-    const redirectUrl = new URL('/login', request.url);
-    redirectUrl.searchParams.set('redirect', request.nextUrl.pathname);
-    return NextResponse.redirect(redirectUrl);
+  if (!session && !isPublicRoute) {
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // Redirect to dashboard if logged in and accessing login page
-  if (request.nextUrl.pathname === '/login' && session) {
-    // Get user role from database
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', session.user.id)
-      .single();
-
-    if (userData) {
-      const redirectPath = userData.role === 'admin' ? '/admin/map' : '/farmer/dashboard';
-      return NextResponse.redirect(new URL(redirectPath, request.url));
+  if (session && !isPublicRoute) {
+    try {
+      await jwtVerify(session, JWT_SECRET);
+    } catch (error) {
+      // Invalid token, redirect to login
+      const response = NextResponse.redirect(new URL('/login', request.url));
+      response.cookies.delete('session');
+      return response;
     }
   }
 
-  return res;
+  return NextResponse.next();
 }
 
 export const config = {
   matcher: [
+    '/dashboard/:path*',
     '/admin/:path*',
-    '/farmer/:path*',
-    '/login',
+    '/api/:path*',
   ],
 };
