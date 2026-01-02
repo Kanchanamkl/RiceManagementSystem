@@ -121,7 +121,7 @@ export default function FarmerDashboard() {
                 {productions.slice(0, 5).map((prod) => (
                   <tr key={prod.id} className="border-b hover:bg-gray-50">
                     <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm">{prod.rice_type_name}</td>
-                    <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm">{prod.season_name}</td>
+                    <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm">{prod.season}</td>
                     <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm text-right">{formatNumber(prod.quantity_kg)} kg</td>
                     <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm hidden sm:table-cell">
                       {new Date(prod.production_date).toLocaleDateString()}

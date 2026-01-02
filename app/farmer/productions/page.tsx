@@ -170,7 +170,7 @@ export default function ProductionsPage() {
                     {prod.rice_type_name}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {prod.season_name}
+                    {prod.season}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {prod.district}
@@ -189,7 +189,7 @@ export default function ProductionsPage() {
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDelete(prod.id)}
+                      onClick={() => handleDelete(String(prod.id))}
                       className="text-red-600 hover:text-red-900 inline-flex items-center"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -214,7 +214,7 @@ export default function ProductionsPage() {
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <h3 className="font-semibold text-gray-900">{prod.rice_type_name}</h3>
-                  <p className="text-sm text-gray-500">{prod.season_name}</p>
+                  <p className="text-sm text-gray-500">{prod.season}</p>
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -224,7 +224,7 @@ export default function ProductionsPage() {
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => handleDelete(prod.id)}
+                    onClick={() => handleDelete(String(prod.id))}
                     className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
                   >
                     <Trash2 className="w-4 h-4" />
