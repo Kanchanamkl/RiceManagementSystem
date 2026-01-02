@@ -3,7 +3,7 @@
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { LayoutDashboard, Package, User, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Package, User, LogOut, Menu, X ,BarChart3} from 'lucide-react';
 import Link from 'next/link';
 
 export default function FarmerLayout({
@@ -49,6 +49,8 @@ export default function FarmerLayout({
     { name: 'Dashboard', href: '/farmer/dashboard', icon: LayoutDashboard },
     { name: 'Productions', href: '/farmer/productions', icon: Package },
     { name: 'Profile', href: '/farmer/profile', icon: User },
+    { name: 'Area Stats', href: '/farmer/area-stats', icon: BarChart3 }
+
   ];
 
   return (
