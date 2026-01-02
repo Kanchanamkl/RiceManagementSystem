@@ -1,15 +1,9 @@
-import { NextRequest } from 'next/server';
-import { requireAuth, requireAdmin } from '@/lib/api/auth';
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/api/auth';
 import { getDemandById, updateDemand, deleteDemand } from '@/lib/db/demands';
-import { 
-  successResponse, 
-  unauthorizedResponse, 
-  errorResponse, 
-  notFoundResponse,
-  forbiddenResponse,
-  validationErrorResponse 
-} from '@/lib/api/response';
+import { successResponse, unauthorizedResponse, errorResponse, forbiddenResponse, notFoundResponse } from '@/lib/api/response';
 
+// GET single demand
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -24,92 +18,84 @@ export async function GET(
     const demand = await getDemandById(params.id);
 
     if (!demand) {
-      return notFoundResponse('Demand not found');
+      return notFoundResponse('Demand record not found');
     }
 
     return successResponse(demand);
-
   } catch (error) {
     console.error('Get demand error:', error);
     return errorResponse('Internal server error', 500);
   }
 }
 
+// PUT update demand (Admin only)
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const context = await requireAdmin(request);
+    const context = await requireAuth(request);
 
     if (!context) {
-      return forbiddenResponse('Only admins can update demand records');
+      return unauthorizedResponse('Please log in to continue');
+    }
+
+    if (context.user.role !== 'admin') {
+      return forbiddenResponse('Only administrators can update demand records');
     }
 
     const demand = await getDemandById(params.id);
-
     if (!demand) {
-      return notFoundResponse('Demand not found');
+      return notFoundResponse('Demand record not found');
     }
 
     const body = await request.json();
     const { rice_type_id, district, quantity_kg, demand_date, notes } = body;
 
-    // Validate input
-    const errors: Record<string, string[]> = {};
-    
+    // Validation
     if (quantity_kg !== undefined && quantity_kg <= 0) {
-      errors.quantity_kg = ['Quantity must be greater than 0'];
+      return errorResponse('Quantity must be greater than 0', 400);
     }
 
-    if (Object.keys(errors).length > 0) {
-      return validationErrorResponse(errors);
-    }
-
-    // Build updates object
-    const updates: any = {};
-    if (rice_type_id !== undefined) updates.rice_type_id = rice_type_id;
-    if (district !== undefined) updates.district = district;
-    if (quantity_kg !== undefined) updates.quantity_kg = Number(quantity_kg);
-    if (demand_date !== undefined) updates.demand_date = demand_date;
-    if (notes !== undefined) updates.notes = notes;
-
-    const updatedDemand = await updateDemand(params.id, updates);
-
-    return successResponse({
-      demand: updatedDemand,
-      message: 'Demand updated successfully',
+    const updatedDemand = await updateDemand(params.id, {
+      rice_type_id,
+      district,
+      quantity_kg: quantity_kg ? Number(quantity_kg) : undefined,
+      demand_date,
+      notes
     });
 
+    return successResponse(updatedDemand, 'Demand record updated successfully');
   } catch (error) {
     console.error('Update demand error:', error);
     return errorResponse('Internal server error', 500);
   }
 }
 
+// DELETE demand (Admin only)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const context = await requireAdmin(request);
+    const context = await requireAuth(request);
 
     if (!context) {
-      return forbiddenResponse('Only admins can delete demand records');
+      return unauthorizedResponse('Please log in to continue');
+    }
+
+    if (context.user.role !== 'admin') {
+      return forbiddenResponse('Only administrators can delete demand records');
     }
 
     const demand = await getDemandById(params.id);
-
     if (!demand) {
-      return notFoundResponse('Demand not found');
+      return notFoundResponse('Demand record not found');
     }
 
     await deleteDemand(params.id);
 
-    return successResponse({
-      message: 'Demand deleted successfully',
-    });
-
+    return successResponse(null, 'Demand record deleted successfully');
   } catch (error) {
     console.error('Delete demand error:', error);
     return errorResponse('Internal server error', 500);
