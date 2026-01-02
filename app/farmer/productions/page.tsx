@@ -170,7 +170,7 @@ export default function ProductionsPage() {
                     {prod.rice_type_name}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {prod.season}
+                    {prod.season_name}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {prod.district}
