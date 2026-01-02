@@ -43,6 +43,9 @@ CREATE TABLE public.seasons (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+ALTER TABLE public.seasons 
+ADD COLUMN is_active BOOLEAN DEFAULT true;
+
 -- Productions table
 CREATE TABLE public.productions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
