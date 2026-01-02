@@ -8,14 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { Toast } from '@/components/ui/Toast';
-
-const DISTRICTS = [
-  'Colombo', 'Gampaha', 'Kalutara', 'Kandy', 'Matale', 'Nuwara Eliya',
-  'Galle', 'Matara', 'Hambantota', 'Jaffna', 'Kilinochchi', 'Mannar',
-  'Vavuniya', 'Mullaitivu', 'Batticaloa', 'Ampara', 'Trincomalee',
-  'Kurunegala', 'Puttalam', 'Anuradhapura', 'Polonnaruwa', 'Badulla',
-  'Monaragala', 'Ratnapura', 'Kegalle'
-];
+import { Loader2 } from 'lucide-react';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -32,8 +25,14 @@ export default function RegisterPage() {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
+  const [districts, setDistricts] = useState<string[]>([]);
+  const [loadingDistricts, setLoadingDistricts] = useState(true);
   const { register, isAuthenticated, user, loading: authLoading } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    fetchDistricts();
+  }, []);
 
   useEffect(() => {
     // Redirect if already authenticated
@@ -45,6 +44,20 @@ export default function RegisterPage() {
       }
     }
   }, [isAuthenticated, user, authLoading, router]);
+
+  const fetchDistricts = async () => {
+    try {
+      const response = await fetch('/api/districts');
+      const result = await response.json();
+      if (result.success) {
+        setDistricts(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching districts:', error);
+    } finally {
+      setLoadingDistricts(false);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
@@ -194,20 +207,27 @@ export default function RegisterPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               District <span className="text-red-500">*</span>
             </label>
-            <select
-              name="district"
-              value={formData.district}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-            >
-              <option value="">Select your district</option>
-              {DISTRICTS.map((district) => (
-                <option key={district} value={district}>
-                  {district}
-                </option>
-              ))}
-            </select>
+            {loadingDistricts ? (
+              <div className="flex items-center justify-center p-3 border border-gray-300 rounded-lg bg-gray-50">
+                <Loader2 className="w-4 h-4 animate-spin text-gray-400 mr-2" />
+                <span className="text-sm text-gray-500">Loading districts...</span>
+              </div>
+            ) : (
+              <select
+                name="district"
+                value={formData.district}
+                onChange={handleChange}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                <option value="">Select your district</option>
+                {districts.map((district) => (
+                  <option key={district} value={district}>
+                    {district}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <Input

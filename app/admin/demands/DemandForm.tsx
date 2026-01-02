@@ -88,131 +88,131 @@ export function DemandForm({ demand, onClose, onSuccess }: DemandFormProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-2xl font-bold text-gray-900">
-            {demand ? 'Edit Demand Record' : 'Add New Demand Record'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition"
+      <div className="flex items-center justify-between p-6 border-b">
+        <h2 className="text-2xl font-bold text-gray-900">
+        {demand ? 'Edit Demand Record' : 'Add New Demand Record'}
+        </h2>
+        <button
+        onClick={onClose}
+        className="text-gray-400 hover:text-gray-600 transition"
+        >
+        <X className="w-6 h-6" />
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* District */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+          District <span className="text-red-500">*</span>
+          </label>
+          <select
+          required
+          value={formData.district}
+          onChange={(e) => setFormData({ ...formData, district: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
           >
-            <X className="w-6 h-6" />
-          </button>
+          <option value="">Select District</option>
+          {districts.map(district => (
+            <option key={district.id} value={district.name}>
+            {district.name}
+            </option>
+          ))}
+          </select>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
+        {/* Rice Type */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+          Rice Type <span className="text-red-500">*</span>
+          </label>
+          <select
+          required
+          value={formData.rice_type_id}
+          onChange={(e) => setFormData({ ...formData, rice_type_id: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
+          <option value="">Select Rice Type</option>
+          {riceTypes.map(type => (
+            <option key={type.id} value={type.id}>
+            {type.name} ({type.category})
+            </option>
+          ))}
+          </select>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* District */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                District <span className="text-red-500">*</span>
-              </label>
-              <select
-                required
-                value={formData.district}
-                onChange={(e) => setFormData({ ...formData, district: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-              >
-                <option value="">Select District</option>
-                {districts.map(district => (
-                  <option key={district.id} value={district.name}>
-                    {district.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+        {/* Quantity */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+          Quantity (kg) <span className="text-red-500">*</span>
+          </label>
+          <Input
+          type="number"
+          required
+          min="0"
+          step="0.01"
+          value={formData.quantity_kg}
+          onChange={(e) => setFormData({ ...formData, quantity_kg: e.target.value })}
+          placeholder="Enter quantity in kg"
+          />
+        </div>
 
-            {/* Rice Type */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Rice Type <span className="text-red-500">*</span>
-              </label>
-              <select
-                required
-                value={formData.rice_type_id}
-                onChange={(e) => setFormData({ ...formData, rice_type_id: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-              >
-                <option value="">Select Rice Type</option>
-                {riceTypes.map(type => (
-                  <option key={type.id} value={type.id}>
-                    {type.name} ({type.category})
-                  </option>
-                ))}
-              </select>
-            </div>
+        {/* Demand Date */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+          Demand Date <span className="text-red-500">*</span>
+          </label>
+          <Input
+          type="date"
+          required
+          value={formData.demand_date}
+          onChange={(e) => setFormData({ ...formData, demand_date: e.target.value })}
+          />
+        </div>
+        </div>
 
-            {/* Quantity */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Quantity (kg) <span className="text-red-500">*</span>
-              </label>
-              <Input
-                type="number"
-                required
-                min="0"
-                step="0.01"
-                value={formData.quantity_kg}
-                onChange={(e) => setFormData({ ...formData, quantity_kg: e.target.value })}
-                placeholder="Enter quantity in kg"
-              />
-            </div>
+        {/* Notes */}
+        <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Notes
+        </label>
+        <textarea
+          value={formData.notes}
+          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+          rows={3}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+          placeholder="Additional notes or comments..."
+        />
+        </div>
 
-            {/* Demand Date */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Demand Date <span className="text-red-500">*</span>
-              </label>
-              <Input
-                type="date"
-                required
-                value={formData.demand_date}
-                onChange={(e) => setFormData({ ...formData, demand_date: e.target.value })}
-              />
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes
-            </label>
-            <textarea
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="Additional notes or comments..."
-            />
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-3 pt-4">
-            <Button
-              type="submit"
-              disabled={loading}
-              className="flex-1"
-            >
-              {loading ? 'Saving...' : demand ? 'Update Demand' : 'Add Demand'}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={onClose}
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
+        {/* Action Buttons */}
+        <div className="flex gap-3 pt-4">
+        <Button
+          type="submit"
+          disabled={loading}
+          className="flex-1"
+        >
+          {loading ? 'Saving...' : demand ? 'Update Demand' : 'Add Demand'}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={onClose}
+          disabled={loading}
+        >
+          Cancel
+        </Button>
+        </div>
+      </form>
       </div>
     </div>
   );

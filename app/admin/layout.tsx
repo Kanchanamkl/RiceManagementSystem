@@ -3,7 +3,7 @@
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Map, BarChart3, Package, Users, LogOut, Menu, X, Settings } from 'lucide-react';
+import { Map, BarChart3, Package, Users, LogOut, Menu, X, Settings, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminLayout({
@@ -49,6 +49,7 @@ export default function AdminLayout({
     { name: 'Map View', href: '/admin/map', icon: Map },
     { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
     { name: 'Productions', href: '/admin/productions', icon: Package },
+    { name: 'Demands', href: '/admin/demands', icon: TrendingUp },
     { name: 'Farmers', href: '/admin/farmers', icon: Users },
     { name: 'Settings', href: '/admin/settings', icon: Settings },
   ];

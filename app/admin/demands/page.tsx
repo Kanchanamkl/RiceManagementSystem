@@ -227,14 +227,12 @@ export default function DemandsPage() {
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="secondary"
-                          size="sm"
                           onClick={() => handleEdit(demand)}
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="danger"
-                          size="sm"
                           onClick={() => handleDelete(demand.id)}
                         >
                           <Trash2 className="w-4 h-4" />
