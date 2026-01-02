@@ -72,13 +72,21 @@ export function ProductionForm({ production, onClose }: ProductionFormProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div 
+      className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-50 p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-semibold text-gray-800">
             {production ? 'Edit Production' : 'Add New Production'}
           </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button 
+            onClick={onClose} 
+            className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -86,12 +94,12 @@ export function ProductionForm({ production, onClose }: ProductionFormProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Rice Type *
+              Rice Type <span className="text-red-500">*</span>
             </label>
             <select
               value={formData.rice_type_id}
               onChange={(e) => setFormData({ ...formData, rice_type_id: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               required
             >
               <option value="">Select Rice Type</option>
@@ -103,12 +111,12 @@ export function ProductionForm({ production, onClose }: ProductionFormProps) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Season *
+              Season <span className="text-red-500">*</span>
             </label>
             <select
               value={formData.season_id}
               onChange={(e) => setFormData({ ...formData, season_id: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               required
             >
               <option value="">Select Season</option>
@@ -151,16 +159,17 @@ export function ProductionForm({ production, onClose }: ProductionFormProps) {
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               rows={3}
+              placeholder="Add any additional notes here..."
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="secondary" onClick={onClose}>
+          <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t">
+            <Button type="button" variant="secondary" onClick={onClose} className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} className="w-full sm:w-auto">
               {loading ? 'Saving...' : production ? 'Update' : 'Create'}
             </Button>
           </div>
