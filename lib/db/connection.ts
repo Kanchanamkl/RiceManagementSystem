@@ -1,25 +1,27 @@
 import { Pool } from 'pg';
 
-// Support both individual params and connection string
-const pool = process.env.DATABASE_URL 
-  ? new Pool({
+// Support both DATABASE_URL and individual parameters
+const connectionConfig = process.env.DATABASE_URL
+  ? {
       connectionString: process.env.DATABASE_URL,
       ssl: { rejectUnauthorized: false },
-      max: parseInt(process.env.DB_MAX_CONNECTIONS || '10'),
+      max: 10,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
-    })
-  : new Pool({
+    }
+  : {
       host: process.env.DB_HOST,
-      port: parseInt(process.env.DB_PORT || '5432'),
+      port: parseInt(process.env.DB_PORT || '6543'),
       database: process.env.DB_NAME,
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
-      ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
-      max: parseInt(process.env.DB_MAX_CONNECTIONS || '10'),
+      ssl: { rejectUnauthorized: false },
+      max: 10,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
-    });
+    };
+
+const pool = new Pool(connectionConfig);
 
 // Log connection status (only in development)
 if (process.env.NODE_ENV === 'development') {
@@ -44,13 +46,16 @@ export async function query<T = any>(
     // Log query for debugging (only in development)
     if (process.env.NODE_ENV === 'development') {
       console.log('Executed query', { 
-        text: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
+        text: text.substring(0, 100) + (text.length > 100 ? '...' : ''), 
         duration, 
         rows: result.rowCount 
       });
     }
     
-    return result;
+    return {
+      rows: result.rows,
+      rowCount: result.rowCount ?? 0
+    };
   } catch (error: any) {
     console.error('Database query error:', error);
     console.error('Query:', text);
