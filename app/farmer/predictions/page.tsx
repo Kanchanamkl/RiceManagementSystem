@@ -25,11 +25,14 @@ interface Season {
 }
 
 interface PredictionResult {
+  success: boolean;
   predicted_quantity: number;
   confidence: number;
   district: string;
   rice_type: string;
   season: string;
+  is_future_prediction?: boolean;
+  note?: string;
 }
 
 export default function PredictionsPage() {
@@ -56,10 +59,11 @@ export default function PredictionsPage() {
       const riceTypesData = await riceTypesRes.json();
       const seasonsData = await seasonsRes.json();
 
-      setRiceTypes(riceTypesData.data || []);
-      setSeasons(seasonsData.data || []);
+      if (riceTypesData.success) setRiceTypes(riceTypesData.data || []);
+      if (seasonsData.success) setSeasons(seasonsData.data || []);
     } catch (err) {
       console.error('Failed to fetch options:', err);
+      setError('Failed to load form options');
     }
   };
 
@@ -69,25 +73,31 @@ export default function PredictionsPage() {
     setError('');
     setPrediction(null);
 
+    console.log('Sending prediction request:', { district, rice_type: riceType, season });
+
     try {
       const response = await fetch('/api/ml/predict', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
-          district,
+          district: district,
           rice_type: riceType,
-          season
+          season: season
         })
       });
 
       const data = await response.json();
+      console.log('Prediction response:', data);
 
       if (!response.ok || !data.success) {
         throw new Error(data.error || 'Prediction failed');
       }
 
-      setPrediction(data);
+      setPrediction(data.data || data);
     } catch (err: any) {
+      console.error('Prediction error:', err);
       setError(err.message || 'Failed to get prediction');
     } finally {
       setLoading(false);
@@ -113,7 +123,7 @@ export default function PredictionsPage() {
           <form onSubmit={handlePredict} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                District
+                District <span className="text-red-500">*</span>
               </label>
               <select
                 value={district}
@@ -130,7 +140,7 @@ export default function PredictionsPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Rice Type
+                Rice Type <span className="text-red-500">*</span>
               </label>
               <select
                 value={riceType}
@@ -147,7 +157,7 @@ export default function PredictionsPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Season
+                Season <span className="text-red-500">*</span>
               </label>
               <select
                 value={season}
@@ -164,8 +174,8 @@ export default function PredictionsPage() {
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              disabled={loading || !district || !riceType || !season}
+              className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
             >
               {loading ? (
                 <>
@@ -184,7 +194,10 @@ export default function PredictionsPage() {
           {error && (
             <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-800">{error}</p>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-red-800">Error</p>
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
             </div>
           )}
         </Card>
@@ -195,11 +208,19 @@ export default function PredictionsPage() {
               Prediction Results
             </h2>
             
+            {prediction.is_future_prediction && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  ℹ️ {prediction.note || 'This is a future prediction based on historical patterns'}
+                </p>
+              </div>
+            )}
+            
             <div className="space-y-4">
               <div className="bg-white rounded-lg p-4 shadow-sm">
                 <p className="text-sm text-gray-600 mb-1">Predicted Production</p>
                 <p className="text-4xl font-bold text-green-600">
-                  {prediction.predicted_quantity.toLocaleString()} kg
+                  {prediction.predicted_quantity?.toLocaleString() || 0} kg
                 </p>
               </div>
 
@@ -209,11 +230,11 @@ export default function PredictionsPage() {
                   <div className="flex-1 bg-gray-200 rounded-full h-2">
                     <div
                       className="bg-green-600 h-2 rounded-full transition-all"
-                      style={{ width: `${prediction.confidence}%` }}
+                      style={{ width: `${prediction.confidence || 0}%` }}
                     />
                   </div>
                   <span className="text-lg font-semibold text-green-600">
-                    {prediction.confidence}%
+                    {prediction.confidence?.toFixed(1) || 0}%
                   </span>
                 </div>
               </div>

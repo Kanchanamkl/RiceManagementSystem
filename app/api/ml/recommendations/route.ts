@@ -1,56 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { verifyToken } from '@/lib/auth';
 import { runPythonScript } from '@/lib/mlClient';
+import { verifyToken } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    // Verify authentication
-    const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value;
-    
+    const token = request.cookies.get('token')?.value;
     if (!token) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
       );
     }
+
+    await verifyToken(token);
     
-    const user = await verifyToken(token);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
-    
-    // Parse request body
-    const { district } = await request.json();
-    
-    // Validate input
+    const body = await request.json();
+    const { district } = body;
+
     if (!district) {
       return NextResponse.json(
         { success: false, error: 'Missing required field: district' },
         { status: 400 }
       );
     }
-    
-    // Run recommendations script
+
+    // Call Python script
     const result = await runPythonScript('recommendations.py', [district]);
-    
-    if (!result.success) {
+
+    if (result.error) {
       return NextResponse.json(
-        { success: false, error: result.error || 'Failed to get recommendations' },
-        { status: 500 }
+        { success: false, error: result.error },
+        { status: 400 }
       );
     }
-    
-    return NextResponse.json(result.data);
-    
+
+    return NextResponse.json({
+      success: true,
+      data: result
+    });
   } catch (error: any) {
-    console.error('ML Recommendations API error:', error);
+    console.error('Recommendations error:', error);
     return NextResponse.json(
-      { success: false, error: error.message || 'Internal server error' },
+      { success: false, error: error.message || 'Failed to get recommendations' },
       { status: 500 }
     );
   }
