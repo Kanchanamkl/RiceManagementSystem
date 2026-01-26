@@ -217,7 +217,7 @@ export default function PredictionsPage() {
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
           <TrendingUp className="w-8 h-8 text-green-600" />
-          AI-Powered Production Intelligence
+          ML-Powered Production Intelligence
         </h1>
         <p className="text-gray-600 mt-2">
           Advanced machine learning predictions and analytics for rice production
@@ -233,7 +233,7 @@ export default function PredictionsPage() {
             icon={<TrendingUp className="w-5 h-5" />}
             label="Single Prediction"
           />
-          <TabButton
+          {/* <TabButton
             active={activeTab === 'compare'}
             onClick={() => setActiveTab('compare')}
             icon={<BarChart3 className="w-5 h-5" />}
@@ -244,7 +244,7 @@ export default function PredictionsPage() {
             onClick={() => setActiveTab('trends')}
             icon={<RefreshCw className="w-5 h-5" />}
             label="Trend Analysis"
-          />
+          /> */}
           <TabButton
             active={activeTab === 'optimize'}
             onClick={() => setActiveTab('optimize')}
