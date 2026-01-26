@@ -4,15 +4,15 @@ import { verifyToken } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const token = request.cookies.get('token')?.value;
-    if (!token) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    // const token = request.cookies.get('token')?.value;
+    // if (!token) {
+    //   return NextResponse.json(
+    //     { success: false, error: 'Unauthorized' },
+    //     { status: 401 }
+    //   );
+    // }
 
-    await verifyToken(token);
+    // await verifyToken(token);
     
     const body = await request.json();
     const { district } = body;
