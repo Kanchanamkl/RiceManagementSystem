@@ -129,17 +129,17 @@ export default function FarmerDashboard() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <Card className="p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Productions</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {stats?.total_productions || 0}
-                </p>
+          <p className="text-sm text-gray-600">Total Productions</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">
+            {stats?.total || 0}
+          </p>
               </div>
               <div className="p-3 bg-green-100 rounded-lg">
-                <Package className="w-8 h-8 text-green-600" />
+          <Package className="w-8 h-8 text-green-600" />
               </div>
             </div>
           </Card>
@@ -147,13 +147,13 @@ export default function FarmerDashboard() {
           <Card className="p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Quantity</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {stats?.total_quantity?.toLocaleString() || 0} kg
-                </p>
+          <p className="text-sm text-gray-600">Total Records</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">
+            {stats?.count || 0}
+          </p>
               </div>
               <div className="p-3 bg-blue-100 rounded-lg">
-                <Calendar className="w-8 h-8 text-blue-600" />
+          <Calendar className="w-8 h-8 text-blue-600" />
               </div>
             </div>
           </Card>
@@ -161,27 +161,18 @@ export default function FarmerDashboard() {
           <Card className="p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Districts</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {stats?.districts_count || 0}
-                </p>
+          <p className="text-sm text-gray-600">By Season</p>
+          <div className="mt-1">
+            <p className="text-sm text-gray-700">
+              Maha: <span className="font-semibold">{stats?.bySeason?.['Maha 2024/25'] || 0}</span>
+            </p>
+            <p className="text-sm text-gray-700">
+              Yala: <span className="font-semibold">{stats?.bySeason?.['Yala 2025'] || 0}</span>
+            </p>
+          </div>
               </div>
               <div className="p-3 bg-purple-100 rounded-lg">
-                <MapPin className="w-8 h-8 text-purple-600" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Rice Types</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {stats?.rice_types_count || 0}
-                </p>
-              </div>
-              <div className="p-3 bg-orange-100 rounded-lg">
-                <TrendingUp className="w-8 h-8 text-orange-600" />
+          <TrendingUp className="w-8 h-8 text-purple-600" />
               </div>
             </div>
           </Card>
